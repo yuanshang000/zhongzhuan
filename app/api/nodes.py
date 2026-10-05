@@ -173,6 +173,13 @@ def delete(node_id: str, db: Session = Depends(get_db)):
     node = _require(db, node_id)
     removed = _delete_recursive(db, node)
     db.commit()
+    # 文件已删除，立即刷新容量缓存
+    try:
+        from app.services.capacity import monitor
+
+        monitor.invalidate()
+    except Exception:
+        pass
     return {"deleted": True, "files_removed": removed}
 
 
@@ -191,6 +198,13 @@ def batch_delete(payload: BatchDeleteIn, db: Session = Depends(get_db)):
             db.rollback()
             result.failed.append({"id": nid, "reason": str(e)})
     db.commit()
+    # 批量删除后刷新容量
+    try:
+        from app.services.capacity import monitor
+
+        monitor.invalidate()
+    except Exception:
+        pass
     return result
 
 

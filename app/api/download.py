@@ -52,12 +52,9 @@ def _zip_disposition(name: str) -> str:
     return f"{ascii_name}.zip; filename*=UTF-8''{quote(name + '.zip', safe='')}"
 
 
-# ---------------- 单文件下载 ----------------
-@router.get("/api/files/{node_id}/download")
-def download_file(node_id: str, db: Session = Depends(get_db)):
-    node = _node_or_404(db, node_id)
-    if node.is_folder:
-        raise bad_request("该节点是文件夹，请使用打包下载")
+# ---------------- 核心下载逻辑（登录路由与公开路由共用）----------------
+def serve_file(node: Node):
+    """单文件下载响应。物理文件缺失时给出明确原因。"""
     storage = get_storage()
     if not node.storage_path:
         raise not_found("文件不存在")
@@ -89,27 +86,31 @@ def download_file(node_id: str, db: Session = Depends(get_db)):
     )
 
 
+# ---------------- 单文件下载（需登录）----------------
+@router.get("/api/files/{node_id}/download")
+def download_file(node_id: str, db: Session = Depends(get_db)):
+    node = _node_or_404(db, node_id)
+    if node.is_folder:
+        raise bad_request("该节点是文件夹，请使用打包下载")
+    return serve_file(node)
+
+
 async def _iter_local(path: str, root: str | None = None, chunk: int = 4 * 1024 * 1024):
     async for b in get_storage().read_chunks(path, chunk, Path(root) if root else None):
         yield b
 
 
-# ---------------- 文件夹打包下载（流式 ZIP）----------------
-@router.get("/api/files/{node_id}/download-zip")
-def download_zip(node_id: str, db: Session = Depends(get_db)):
-    """把整个文件夹打包成 ZIP 流式返回。
+# ---------------- 核心 ZIP 打包逻辑（登录路由与公开路由共用）----------------
+def build_zip_response(db: Session, node: Node):
+    """把节点内容打包成 ZIP 流式返回。
 
     采用 ZIP64 格式，突破 4GB 单文件限制，可打包数 TB 级内容。
-    使用流式写入，边读边压，内存占用恒定。
+    边读边压边下发，内存占用恒定。
     """
-    node = _node_or_404(db, node_id)
     if node.is_file:
-        # 单文件也可打包，保持接口统一
-        tree = [node]
-        root_name = node.name
+        tree = [node]                      # 单文件也走 ZIP，保持接口统一
     else:
         tree = [n for n in svc.get_descendants(db, node.id) if n.is_file]
-        root_name = node.name
 
     if not tree:
         raise bad_request("文件夹为空，没有可下载的内容")
@@ -159,6 +160,37 @@ def download_zip(node_id: str, db: Session = Depends(get_db)):
             "X-Content-Type-Options": "nosniff",
         },
     )
+
+
+# ---------------- 需登录的下载入口 ----------------
+@router.get("/api/files/{node_id}/download-zip")
+def download_zip(node_id: str, db: Session = Depends(get_db)):
+    return build_zip_response(db, _node_or_404(db, node_id))
+
+
+# ---------------- 公开下载入口（凭分享 slug，免登录）----------------
+def _node_by_slug(db: Session, slug: str) -> Node:
+    """按分享码查找节点，并校验分享是否有效。"""
+    node = db.query(Node).filter(Node.share_slug == slug).first()
+    if node is None or not node.share_enabled:
+        raise not_found("分享链接不存在或已被删除")
+    return node
+
+
+@router.get("/api/public/{slug}/download")
+def public_download(slug: str, db: Session = Depends(get_db)):
+    """凭分享码下载单个文件 —— 无需登录。
+
+    这是分享链接的落地地址。只有拿到有效 slug 才能下载，
+    不能通过猜测 node_id 绕过面板密码。
+    """
+    return serve_file(_node_by_slug(db, slug))
+
+
+@router.get("/api/public/{slug}/download-zip")
+def public_download_zip(slug: str, db: Session = Depends(get_db)):
+    """凭分享码打包下载文件夹 —— 无需登录。"""
+    return build_zip_response(db, _node_by_slug(db, slug))
 
 
 def _relative_path(db: Session, root: Node, node: Node) -> str:

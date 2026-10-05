@@ -60,6 +60,16 @@ def storage_root() -> Path:
     return Path(get_runtime("local_storage_dir"))
 
 
+def _invalidate_capacity() -> None:
+    """上传/删除后让容量缓存失效，下次读取即为最新。"""
+    try:
+        from app.services.capacity import monitor
+
+        monitor.invalidate()
+    except Exception:
+        pass
+
+
 def _register(db: Session, parent_id: str | None, name: str, size: int, mime: str | None) -> Node:
     """先落库拿到 id 与存储路径，前端再把字节传到该路径。"""
     final_name = svc.unique_name(db, parent_id, svc.sanitize(name), NodeType.FILE.value)
@@ -148,6 +158,7 @@ async def upload_raw(node_id: str, request: Request, db: Session = Depends(get_d
         node.size = size
         node.mime_type = request.headers.get("content-type", node.mime_type)
         db.commit()
+        _invalidate_capacity()
         return JSONResponse({"ok": True, "size": size})
 
     # S3 后端：流式转发，避免整文件进内存
@@ -185,6 +196,7 @@ def discard_upload(node_id: str, db: Session = Depends(get_db)):
     shutil.rmtree(root / ".parts" / node_id, ignore_errors=True)
     db.delete(node)
     db.commit()
+    _invalidate_capacity()
 
     sessions = _load_sessions()
     sessions.pop(node_id, None)
@@ -289,6 +301,7 @@ def complete_multipart(node_id: str, payload: MultipartCompleteIn, db: Session =
     db.commit()
     _load_sessions().pop(node_id, None)
     _save_sessions()
+    _invalidate_capacity()
     db.refresh(node)
     return DirectUploadPrepareOut(mode="done", node_id=node.id, storage_path=node.storage_path or "")
 
