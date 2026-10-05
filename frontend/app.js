@@ -796,6 +796,84 @@ async function doDelete(ids) {
   };
 }
 
+/**
+ * 复制文本到剪贴板。多级回退以兼容非 HTTPS 环境。
+ *
+ * navigator.clipboard 仅在安全上下文（HTTPS / localhost）可用，
+ * 局域网 http://192.168.x.x 访问时会不存在，必须有回退方案。
+ *
+ * @returns {Promise<boolean>} 是否复制成功
+ */
+async function copyText(text) {
+  // 1. 标准 API（HTTPS 或 localhost）
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) { /* 继续尝试下一种 */ }
+  }
+
+  // 2. 传统方案：选中文本后 execCommand
+  //    需要一个真实存在于 DOM 且可见的 textarea
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '-9999px';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+
+  const savedFocus = document.activeElement;
+  try {
+    ta.select();
+    ta.setSelectionRange(0, text.length);   // iOS 需要
+    ta.style.fontSize = '16px';             // 防止 iOS 缩放
+    const ok = document.execCommand('copy');
+    return ok;
+  } catch (e) {
+    return false;
+  } finally {
+    document.body.removeChild(ta);
+    // 恢复焦点，避免键盘弹出中断操作
+    if (savedFocus && savedFocus.focus) {
+      try { savedFocus.focus({ preventScroll: true }); } catch (e) {}
+    }
+  }
+}
+
+/** 复制成功后按钮短暂变为成功态 */
+function flashCopied(btn) {
+  if (!btn) return;
+  const original = btn.innerHTML;
+  btn.classList.add('done');
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/></svg>已复制`;
+  setTimeout(() => {
+    btn.classList.remove('done');
+    btn.innerHTML = original;
+  }, 1800);
+}
+
+/** 复制并给出明确反馈 */
+async function copyWithFeedback(text, okMsg = '链接已复制到剪贴板') {
+  const ok = await copyText(text);
+  if (ok) {
+    toast(okMsg);
+  } else {
+    toast('复制失败，请手动选中链接后按 Ctrl+C');
+    // 兜底：全选内容，提示用户手动复制
+    const input = $('#shareInput');
+    if (input) {
+      input.focus();
+      input.select();
+      input.setSelectionRange(0, text.length);
+    }
+  }
+  return ok;
+}
+
 async function doShare(id) {
   let s;
   try { s = await api(`/api/nodes/${id}/share`); }
@@ -805,7 +883,8 @@ async function doShare(id) {
   modal('分享链接', `
     <p>${s.enabled ? '链接已生成，任何人打开即可下载，无需登录。' : '分享已关闭，链接暂时失效。'}</p>
     <div class="share-field">
-      <input type="text" id="shareInput" value="${esc(full)}" readonly>
+      <input type="text" id="shareInput" value="${esc(full)}" readonly
+        title="点击全选，可手动复制">
       <button class="btn-copy" id="btnCopy">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -817,17 +896,30 @@ async function doShare(id) {
       <button class="act act-primary" id="btnDone">完成</button>
     </div>`);
 
-  $('#btnCopy').onclick = () => {
-    $('#shareInput').select();
-    navigator.clipboard?.writeText(full).then(() => toast('已复制到剪贴板'),
-      () => { document.execCommand('copy'); toast('已复制'); });
+  $('#btnCopy').onclick = async () => {
+    const ok = await copyWithFeedback(full);
+    if (ok) flashCopied($('#btnCopy'));
+  };
+
+  // 点击输入框即全选，方便手动复制（复制按钮失效时的兜底）
+  $('#shareInput').onclick = function () {
+    this.focus();
+    this.select();
+    this.setSelectionRange(0, full.length);
   };
   $('#btnDone').onclick = closeModal;
   $('#btnToggleShare').onclick = async () => {
+    const btn = $('#btnToggleShare');
+    btn.disabled = true;              // 防重复点击
     try {
       await api(`/api/nodes/${id}/share`, { method: 'POST', body: { enabled: !s.enabled } });
-      closeModal(); doShare(id);
-    } catch (e) { toast(e.message); }
+      closeModal();                   // 直接关闭，不再重新打开弹窗
+      toast(s.enabled ? '已关闭分享，链接失效' : '已开启分享');
+      await renderList();             // 刷新列表，"已分享"标记会同步变化
+    } catch (e) {
+      toast(e.message);
+      btn.disabled = false;
+    }
   };
 }
 
@@ -892,7 +984,39 @@ function modal(title, html) {
   $('#modalBody').innerHTML = html;
   $('#modalMask').hidden = false;
 }
-function closeModal() { $('#modalMask').hidden = true; }
+
+function closeModal() {
+  const mask = $('#modalMask');
+  if (mask) mask.hidden = true;
+}
+
+// 统一处理弹窗内的关闭类按钮（事件委托，避免动态插入的按钮漏绑定）
+// 覆盖：关闭/取消/完成类按钮，以及标题栏的✕
+document.addEventListener('click', (e) => {
+  if ($('#modalMask').hidden) return;
+
+  // 标题栏 ✕（点 SVG 内部也要命中）
+  if (e.target.closest('#modalX')) {
+    closeModal();
+    e.stopPropagation();
+    return;
+  }
+
+  // 各类"关闭/取消/完成"按钮
+  const closer = e.target.closest(
+    '#btnDone, #rnCancel, #nfCancel, #delCancel, #pkCancel, #setCancel'
+  );
+  if (closer) {
+    closeModal();
+    e.stopPropagation();
+    return;
+  }
+
+  // 点遮罩空白处关闭（点在弹窗主体内不关）
+  if (e.target.id === 'modalMask') {
+    closeModal();
+  }
+}, true);   // 用捕获阶段，确保优先于业务处理器
 
 function pickTarget(folders, title, onPick) {
   modal(title, `
@@ -988,7 +1112,7 @@ document.addEventListener('click', async (e) => {
   const tree = t.closest('.tree-item'); if (tree) return load(tree.dataset.id);
   const crumb = t.closest('.crumb:not(.last)'); if (crumb) return load(crumb.dataset.id || null);
 
-  if (t.id === 'modalX' || t.id === 'modalMask') closeModal();
+  // 关闭逻辑已由弹窗的事件委托统一处理（见文件上方）
 });
 
 document.addEventListener('change', (e) => {
