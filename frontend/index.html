@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CloudRive · 云端存储</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- ================= 侧边栏 ================= -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6.5 19a4.5 4.5 0 0 1-.5-8.97A6 6 0 0 1 17.7 9.2 4.4 4.4 0 0 1 17.5 19z"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <span class="brand-name">CloudRive</span>
+      <span class="brand-tag">私有云盘</span>
+    </div>
+  </div>
+
+  <button class="btn-upload" id="btnUpload">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 16V4"/><path d="M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/>
+    </svg>
+    上传文件
+  </button>
+
+  <nav class="nav">
+    <p class="nav-title">文件</p>
+    <a class="nav-item" data-folder="">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.3l2 2.4h8.7A1.5 1.5 0 0 1 21 9.9V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/>
+      </svg>
+      <span>全部文件</span>
+      <span class="nav-count" id="navAllCount">0</span>
+    </a>
+
+    <p class="nav-title">文件夹</p>
+    <div class="nav-tree" id="navTree">
+      <p class="nav-empty">暂无文件夹</p>
+    </div>
+  </nav>
+
+  <div class="sidebar-foot">
+    <button class="foot-btn" id="btnSettings" title="存储设置">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3
+          1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1
+          a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1
+          a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1
+          a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>
+      </svg>
+      <span>存储设置</span>
+    </button>
+
+    <div class="quota">
+      <div class="quota-head">
+        <span>存储位置</span>
+        <b id="statRoot" title="">—</b>
+      </div>
+      <div class="quota-path" id="statRootPath" title="">加载中…</div>
+      <div class="quota-meta">
+        <span><b id="statFiles">0</b> 个文件</span>
+        <span><b id="statFolders">0</b> 个文件夹</span>
+        <span><b id="statSize">0 B</b></span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ================= 主区域 ================= -->
+<main class="main">
+  <header class="topbar">
+    <div class="topbar-left">
+      <h1 class="page-title" id="pageTitle">全部文件</h1>
+      <nav class="crumbs" id="crumbs"></nav>
+    </div>
+    <div class="topbar-right">
+      <div class="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.1" stroke-linecap="round">
+          <circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="搜索此文件夹" autocomplete="off">
+      </div>
+
+      <div class="segmented" id="viewToggle">
+        <button class="seg active" data-view="list" title="列表视图">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.1" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <button class="seg" data-view="grid" title="网格视图">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/>
+            <rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>
+          </svg>
+        </button>
+      </div>
+
+      <button class="icon-btn" id="btnNewFolder" title="新建文件夹">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.3l2 2.4h8.7A1.5 1.5 0 0 1 21 9.9V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/>
+          <path d="M12 11.5v5M9.5 14h5"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="btnRefresh" title="刷新">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 5v6h-6"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 批量操作条 -->
+  <div class="actionbar" id="toolbar">
+    <div class="ab-left">
+      <label class="checkbox">
+        <input type="checkbox" id="checkAllBar"><span></span>
+      </label>
+      <b id="selCount">已选 0 项</b>
+      <button class="link-btn" id="btnClearSel">取消选择</button>
+    </div>
+    <div class="ab-right">
+      <button class="btn-sm" data-act="download">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 4v12"/><path d="M7.5 11.5 12 16l4.5-4.5"/><path d="M4 19h16"/>
+        </svg>下载</button>
+      <button class="btn-sm" data-act="move">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.3l2 2.4h8.7A1.5 1.5 0 0 1 21 9.9V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/>
+          <path d="M12 11v6m0 0 2.5-2.5M12 17l-2.5-2.5"/>
+        </svg>移动</button>
+      <button class="btn-sm" data-act="share">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="17.5" cy="5.5" r="2.6"/><circle cx="6.5" cy="12" r="2.6"/><circle cx="17.5" cy="18.5" r="2.6"/>
+          <path d="m8.8 10.8 6.4-3.9M8.8 13.2l6.4 3.9"/>
+        </svg>分享</button>
+      <button class="btn-sm" data-act="rename">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 6.5 17.5 9.5"/>
+        </svg>重命名</button>
+      <button class="btn-sm danger" data-act="delete">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 7h16"/><path d="M9.5 7V5.5A1.5 1.5 0 0 1 11 4h2a1.5 1.5 0 0 1 1.5 1.5V7"/>
+          <path d="M6.5 7l.8 12A1.5 1.5 0 0 0 8.8 20.5h6.4a1.5 1.5 0 0 0 1.5-1.4L17.5 7"/>
+        </svg>删除</button>
+    </div>
+  </div>
+
+  <!-- 内容区 -->
+  <div class="content" id="content">
+    <div class="drop-overlay" id="dropOverlay">
+      <div class="drop-inner">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4"/><path d="M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/>
+        </svg>
+        <b>释放即可上传</b>
+        <span>支持 GB 级大文件 · 分片并发</span>
+      </div>
+    </div>
+
+    <div class="upload-panel" id="uploadPanel" hidden>
+      <div class="up-head">
+        <b id="upTitle">正在上传</b>
+        <button class="link-btn" id="upClear">清除已完成</button>
+      </div>
+      <div class="up-list" id="uploadQueue"></div>
+    </div>
+
+    <!-- 列表视图 -->
+    <div class="list-wrap" id="listView">
+      <div class="list-head">
+        <label class="checkbox"><input type="checkbox" id="checkAll"><span></span></label>
+        <span class="lh-name">名称</span>
+        <span class="lh-size">大小</span>
+        <span class="lh-time">修改时间</span>
+        <span class="lh-act"></span>
+      </div>
+      <div id="fileList"></div>
+    </div>
+
+    <!-- 网格视图 -->
+    <div class="grid-wrap" id="gridView" hidden></div>
+
+    <!-- 空状态 -->
+    <div class="empty" id="empty" hidden>
+      <div class="empty-art">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.3l2 2.4h8.7A1.5 1.5 0 0 1 21 9.9V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/>
+        </svg>
+      </div>
+      <b id="emptyTitle">这个文件夹还是空的</b>
+      <span id="emptySub">把文件拖进来，或点击左上角上传</span>
+      <button class="btn-primary" id="emptyUpload">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4"/><path d="M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/>
+        </svg>选择文件</button>
+    </div>
+  </div>
+</main>
+
+<!-- ================= 弹窗 ================= -->
+<div class="mask" id="modalMask" hidden>
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle"></h3>
+      <button class="modal-x" id="modalX">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.1" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" multiple hidden>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
