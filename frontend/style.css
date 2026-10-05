@@ -447,6 +447,9 @@ input[type=text]:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(47,109,2
   gap:6px;font-size:13px;font-weight:500;flex-shrink:0;transition:background .14s;
 }
 .btn-copy:hover{background:var(--ac-h)}
+/* 复制成功态：短暂变绿并显示对勾 */
+.btn-copy.done{background:var(--ok);pointer-events:none}
+.btn-copy.done:hover{background:var(--ok)}
 .note{
   font-size:12px;color:var(--t3);line-height:1.6;padding:10px 12px;
   background:var(--c1);border-radius:var(--r-sm);border:1px solid var(--line);
