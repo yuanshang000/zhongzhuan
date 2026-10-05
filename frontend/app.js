@@ -13,19 +13,45 @@ const state = {
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 
+/** 构造带登录令牌的请求头（分片上传等非 api() 路径使用） */
+function authHeaders(extra = {}) {
+  const h = { ...extra };
+  const tk = localStorage.getItem('cr_token');
+  if (tk) h['Authorization'] = `Bearer ${tk}`;
+  return h;
+}
+
 async function api(url, opt = {}) {
   // 大文件合并等耗时操作需要更长超时
   const ms = opt.timeout || 60000;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
 
+  // 登录令牌：优先用 Authorization 头（Cookie 已由服务端设置，双保险）
+  const headers = { ...(opt.headers || {}) };
+  if (opt.body) headers['Content-Type'] = 'application/json';
+  const token = localStorage.getItem('cr_token');
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   try {
     const r = await fetch(url, {
       method: opt.method || 'GET',
-      headers: opt.body ? { 'Content-Type': 'application/json' } : {},
+      headers,
       body: opt.body ? JSON.stringify(opt.body) : undefined,
       signal: ctrl.signal,
+      // 带上 Cookie，Cookie 不可被 JS 读取但浏览器会自动附加
+      credentials: 'same-origin',
     });
+
+    // 401 表示未登录或令牌过期：跳登录页
+    if (r.status === 401) {
+      localStorage.removeItem('cr_token');
+      if (!location.pathname.startsWith('/s/') && !location.pathname.startsWith('/login')) {
+        location.replace('/login');
+      }
+      throw new Error('请先登录');
+    }
+
     if (!r.ok) {
       let msg = r.statusText;
       try { const d = await r.json(); msg = d.detail?.message || msg; } catch (e) {}
@@ -138,10 +164,91 @@ async function renderTree() {
 }
 
 async function renderStats() {
-  const s = await api('/api/nodes/stats');
-  $('#statFiles').textContent = s.file_count;
-  $('#statFolders').textContent = s.folder_count;
-  $('#statSize').textContent = fmtSize(s.total_size);
+  // 统计信息随容量接口一起返回，避免多次请求
+  await loadCapacity();
+}
+
+/* ---------------- 存储容量 ---------------- */
+// 精确格式化：按字节数输出 GB/MB，保留 2 位小数
+function fmtCap(bytes) {
+  if (bytes === null || bytes === undefined) return '--';
+  if (bytes <= 0) return '0 B';
+  const u = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  let i = 0, v = bytes;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  if (i === 0) return `${Math.round(v)} B`;
+  // 不足 10 的保留 2 位，如 9.45 GB；更大的取整，如 512 GB
+  return v < 10 ? `${v.toFixed(2)} ${u[i]}` : `${Math.round(v)} ${u[i]}`;
+}
+
+/**
+ * 加载并渲染容量。
+ * refresh=true 时跳过缓存强制读盘（上传/删除后调用）。
+ */
+async function loadCapacity(refresh = false) {
+  const box = $('#quotaBox');
+  try {
+    const c = await api(`/api/capacity?refresh=${refresh ? 'true' : 'false'}`);
+
+    if (c.backend !== 'local') {
+      // 对象存储模式：磁盘字段无意义
+      $('#capUsed').textContent = fmtCap(c.drive_used);
+      $('#capBar').style.width = '0%';
+      $('#capUsedText').textContent = fmtCap(c.drive_used);
+      $('#capTotalText').textContent = '对象存储';
+      $('#diskText').textContent = '-';
+      $('#capPath').textContent = c.storage_path || '-';
+      $('#statFiles').textContent = c.file_count;
+      $('#statFolders').textContent = c.folder_count;
+      return;
+    }
+
+    // 主指标：已用 / 可用总量
+    const used = c.drive_used;
+    const total = c.quota_total || c.disk_total;
+    const free = c.quota_free;
+
+    $('#capUsed').textContent = fmtCap(used);
+    $('#capUsedText').textContent = fmtCap(used);
+    $('#capTotalText').textContent = fmtCap(total);
+
+    // 进度条：已用占总量的百分比
+    const pct = total > 0 ? Math.min(100, (used / total) * 100) : 0;
+    const bar = $('#capBar');
+    bar.style.width = pct.toFixed(2) + '%';
+    // 超过 85% 转黄，超过 95% 转红
+    box.querySelector('.quota-bar').classList.toggle('warn', pct >= 85 && pct < 95);
+    box.querySelector('.quota-bar').classList.toggle('danger', pct >= 95);
+
+    // 磁盘真实数据
+    $('#diskText').textContent = `${fmtCap(c.disk_free)} 可用 / ${fmtCap(c.disk_total)}`;
+    $('#diskText').title = `已用 ${fmtCap(c.disk_used)}（${c.disk_percent}%）`;
+
+    const pathEl = $('#capPath');
+    pathEl.textContent = c.storage_path || '-';
+    pathEl.title = c.storage_path || '';
+
+    $('#statFiles').textContent = c.file_count;
+    $('#statFolders').textContent = c.folder_count;
+
+    box.title = `存储 ${fmtCap(used)} / 可用 ${fmtCap(free)}\n磁盘 ${fmtCap(c.disk_free)} 可用`;
+  } catch (e) {
+    console.warn('读取容量失败', e);
+    $('#capUsed').textContent = '--';
+  }
+}
+
+/** 容量轮询定时器 */
+let _capTimer = null;
+function startCapacityPolling(intervalMs = 15000) {
+  stopCapacityPolling();
+  _capTimer = setInterval(() => {
+    // 页面隐藏时不轮询，省资源
+    if (document.visibilityState === 'visible') loadCapacity(false);
+  }, intervalMs);
+}
+function stopCapacityPolling() {
+  if (_capTimer) { clearInterval(_capTimer); _capTimer = null; }
 }
 
 /* ---------------- 设置 ---------------- */
@@ -150,18 +257,21 @@ const fmtBytes = fmtSize;
 async function loadSettings() {
   try {
     const cfg = await api('/api/settings');
-    // 侧栏展示当前存储位置
-    const rootEl = $('#statRoot'), pathEl = $('#statRootPath');
-    if (rootEl) {
-      rootEl.textContent = cfg.storage_backend === 's3' ? '对象存储' : '本地磁盘';
-      pathEl.textContent = cfg.current_root;
-      pathEl.title = cfg.current_root;
-    }
     return cfg;
   } catch (e) {
     console.warn('读取设置失败', e);
     return null;
   }
+}
+
+/** 退出登录：清本地令牌 + 清 Cookie，然后回登录页 */
+async function doLogout() {
+  if (!confirm('确定退出登录？')) return;
+  try {
+    await api('/api/auth/logout', { method: 'POST' });
+  } catch (e) { /* 忽略网络错误，本地照样清 */ }
+  localStorage.removeItem('cr_token');
+  location.replace('/login');
 }
 
 async function openSettings() {
@@ -228,7 +338,8 @@ async function openSettings() {
       closeModal();
       toast('设置已生效');
       await load(state.folderId);
-      await loadSettings();
+      // 存储路径可能变了，强制刷新容量
+      await loadCapacity(true);
     } catch (e) {
       toast(e.message);
       btn.disabled = false; btn.textContent = '保存并应用';
@@ -424,7 +535,8 @@ async function uploadFiles(files) {
   // 逐个串行上传，避免多文件同时抢带宽导致整体变慢
   for (const f of files) await uploadOne(f);
   await renderList();
-  await renderStats();
+  // 上传后强制刷新容量（跳过缓存，立即反映新占用）
+  await loadCapacity(true);
 }
 
 async function uploadOne(file) {
@@ -502,6 +614,7 @@ async function uploadOne(file) {
     el.querySelector('.up-x').remove();
     state.uploadDone++;
     await renderList();
+    await loadCapacity(true);
     setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 260); }, e.message === '已取消' ? 1200 : 6000);
   }
 
@@ -515,6 +628,10 @@ function xhrUpload(file, url, onProgress, isAborted) {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', url, true);
     xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    // 带上登录令牌，否则大文件上传会被 401拒绝
+    const tk = localStorage.getItem('cr_token');
+    if (tk) xhr.setRequestHeader('Authorization', `Bearer ${tk}`);
+    xhr.withCredentials = true;
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(e.loaded / e.total);
       if (isAborted()) { xhr.abort(); reject(new Error('已取消')); }
@@ -538,7 +655,15 @@ async function s3Multipart(file, info, done, prog, isAborted) {
       const { urls } = await api(`/api/files/multipart/${info.node_id}/sign`, { method: 'POST', body: [n] });
       const url = urls.find(u => u.partNumber === n)?.url;
       if (!url) throw new Error('分片签名失败');
-      const resp = await retry(() => fetch(url, { method: 'PUT', body: blob }), isAborted, RETRIES, n);
+      const resp = await retry(
+        () => fetch(url, {
+          method: 'PUT',
+          body: blob,
+          headers: authHeaders(),
+          credentials: 'same-origin',
+        }),
+        isAborted, RETRIES, n
+      );
       const etag = resp.headers.get('ETag') || '"x"';
       etags.set(n, { PartNumber: n, ETag: etag });
       done.add(n); prog();
@@ -570,7 +695,12 @@ async function localMultipart(file, info, done, prog, isAborted) {
       let r;
       try {
         r = await retry(
-          () => fetch(`/api/files/part/${info.node_id}/${n}`, { method: 'PUT', body: blob }),
+          () => fetch(`/api/files/part/${info.node_id}/${n}`, {
+            method: 'PUT',
+            body: blob,
+            headers: authHeaders(),
+            credentials: 'same-origin',
+          }),
           isAborted,
           RETRIES,
           n
@@ -820,7 +950,13 @@ document.addEventListener('click', async (e) => {
   if (t.closest('#btnUpload') || t.closest('#emptyUpload')) { $('#fileInput').click(); return; }
   if (t.closest('#btnNewFolder')) { createFolder(); return; }
   if (t.closest('#btnSettings')) { openSettings(); return; }
-  if (t.closest('#btnRefresh')) { await load(state.folderId); await renderTree(); toast('已刷新'); return; }
+  if (t.closest('#btnLogout')) { doLogout(); return; }
+  if (t.closest('#btnRefresh')) {
+    await load(state.folderId);
+    await loadCapacity(true);
+    toast('已刷新');
+    return;
+  }
   if (t.closest('#btnClearSel')) { state.selected.clear(); render(); return; }
 
   const sh = t.closest('[data-share]'); if (sh) return doShare(sh.dataset.share);
@@ -915,18 +1051,38 @@ document.addEventListener('keydown', e => {
 (async function init() {
   $$('.seg').forEach(s => s.classList.toggle('active', s.dataset.view === state.view));
 
-  // 后端不可达时给出明确提示，而不是让页面卡在空白
   try {
+    // 先确认登录态。未登录时后端返回 401，api() 会自动跳转登录页。
+    const auth = await fetch('/api/auth/status', { credentials: 'same-origin' })
+      .then(r => r.json())
+      .catch(() => null);
+
+    if (auth && auth.must_login) {
+      location.replace('/login');
+      return;
+    }
+
+    // 启用了认证才显示「退出登录」
+    const lo = $('#btnLogout');
+    if (lo) lo.hidden = !(auth && auth.enabled);
+
     await loadSettings();
     await load(null);
+
+    // 容量定时刷新（15秒），文件增删后自动同步
+    startCapacityPolling(15000);
   } catch (err) {
     $('#listView').hidden = true;
     $('#gridView').hidden = true;
     const e = $('#empty');
     e.hidden = false;
-    $('#emptyTitle').textContent = '无法连接到服务器';
-    $('#emptySub').textContent = '请确认后端服务已启动（docker compose up -d）';
+    // 区分「未登录」与「连不上服务器」
+    const notAuth = err && /登录/.test(err.message || '');
+    $('#emptyTitle').textContent = notAuth ? '请先登录' : '无法连接到服务器';
+    $('#emptySub').textContent = notAuth
+      ? '正在跳转到登录页…'
+      : '请确认后端服务已启动（双击 start.bat）';
     $('#emptyUpload').hidden = true;
-    console.error('[CloudRive] 初始化失败:', err);
+    if (!notAuth) console.error('[CloudRive] 初始化失败:', err);
   }
 })();

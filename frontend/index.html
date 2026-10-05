@@ -62,16 +62,47 @@
       <span>存储设置</span>
     </button>
 
-    <div class="quota">
+    <button class="foot-btn" id="btnLogout" title="退出登录" hidden>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      <span>退出登录</span>
+    </button>
+
+    <div class="quota" id="quotaBox">
       <div class="quota-head">
-        <span>存储位置</span>
-        <b id="statRoot" title="">—</b>
+        <span>存储容量</span>
+        <b id="capUsed">--</b>
       </div>
-      <div class="quota-path" id="statRootPath" title="">加载中…</div>
+
+      <!-- 主进度条：已用 / 总量 -->
+      <div class="quota-bar" title="已用容量占比">
+        <i id="capBar" style="width:0%"></i>
+      </div>
+
+      <div class="quota-legend">
+        <span><b id="capUsedText">--</b> 已用</span>
+        <span class="sep">/</span>
+        <span><b id="capTotalText">--</b> 可用</span>
+      </div>
+
+      <!-- 磁盘信息行-->
+      <div class="cap-rows">
+        <div class="cap-row">
+          <span class="cap-k">磁盘</span>
+          <span class="cap-v" id="diskText">--</span>
+        </div>
+        <div class="cap-row">
+          <span class="cap-k">位置</span>
+          <span class="cap-v mono" id="capPath" title="">--</span>
+        </div>
+      </div>
+
       <div class="quota-meta">
-        <span><b id="statFiles">0</b> 个文件</span>
-        <span><b id="statFolders">0</b> 个文件夹</span>
-        <span><b id="statSize">0 B</b></span>
+        <span><b id="statFiles">0</b> 文件</span>
+        <span><b id="statFolders">0</b> 文件夹</span>
       </div>
     </div>
   </div>

@@ -112,15 +112,28 @@ button{font-family:inherit}
 .quota{background:var(--c1);border:1px solid var(--line);border-radius:var(--r);padding:11px 12px}
 .quota-head{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;color:var(--t2)}
 .quota-head b{font-size:12.5px;color:var(--t1);font-weight:600;font-variant-numeric:tabular-nums}
-.quota-path{
-  font-size:10.5px;color:var(--t3);margin:3px 0 7px;line-height:1.45;
-  word-break:break-all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  max-height:32px;overflow:hidden;
-}
-.quota-bar{height:5px;background:var(--c3);border-radius:3px;margin:8px 0 7px;overflow:hidden}
+
+.quota-bar{height:6px;background:var(--c3);border-radius:3px;margin:8px 0 6px;overflow:hidden}
 .quota-bar i{display:block;height:100%;border-radius:3px;
-  background:linear-gradient(90deg,#4d84ff,#2f6df6);transition:width .45s cubic-bezier(.4,0,.2,1)}
-.quota-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);gap:6px}
+  background:linear-gradient(90deg,#4d84ff,#2f6df6);
+  transition:width .5s cubic-bezier(.4,0,.2,1)}
+.quota-bar.warn i{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+.quota-bar.danger i{background:linear-gradient(90deg,#f87171,#dc2626)}
+
+.quota-legend{display:flex;align-items:baseline;gap:4px;font-size:10.5px;color:var(--t3)}
+.quota-legend b{color:var(--t2);font-weight:600;font-variant-numeric:tabular-nums;font-size:11.5px}
+.quota-legend .sep{color:var(--line2)}
+
+.cap-rows{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);
+  display:flex;flex-direction:column;gap:4px}
+.cap-row{display:flex;align-items:baseline;gap:8px;font-size:10.5px}
+.cap-k{color:var(--t3);flex-shrink:0;width:26px}
+.cap-v{color:var(--t2);flex:1;text-align:right;font-variant-numeric:tabular-nums}
+.cap-v.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:right}
+
+.quota-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);gap:6px;
+  margin-top:8px;padding-top:7px;border-top:1px solid var(--line)}
 .quota-meta b{color:var(--t2);font-weight:550;font-variant-numeric:tabular-nums}
 
 /* ================= 主区 ================= */

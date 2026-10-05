@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CloudRive · 登录</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+/* 登录页专用样式（内联，避免依赖主样式表的加载顺序） */
+body.auth-body{
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;background:var(--c2);padding:24px;
+}
+.auth-wrap{width:100%;max-width:392px}
+.auth-card{
+  background:var(--c0);border-radius:var(--r-lg);padding:36px 32px 30px;
+  box-shadow:0 12px 32px rgba(15,23,42,.11),0 3px 8px rgba(15,23,42,.06);
+  animation:authRise .26s cubic-bezier(.34,1.2,.64,1);
+}
+@keyframes authRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+.auth-logo{
+  width:52px;height:52px;border-radius:14px;margin:0 auto 18px;
+  background:linear-gradient(145deg,#4d84ff,#2f6df6);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 10px rgba(47,109,246,.3);
+}
+.auth-title{font-size:19px;font-weight:650;text-align:center;letter-spacing:-.2px}
+.auth-sub{font-size:13px;color:var(--t3);text-align:center;margin-top:5px;margin-bottom:26px}
+
+.auth-field{position:relative;margin-bottom:14px}
+.auth-field input{
+  width:100%;height:44px;padding:0 42px 0 13px;border:1px solid var(--line2);
+  border-radius:var(--r-sm);font-size:14px;outline:none;color:var(--t1);
+  font-family:inherit;background:var(--c0);transition:border-color .15s,box-shadow .15s;
+}
+.auth-field input:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(47,109,246,.1)}
+.auth-field input::placeholder{color:var(--t3)}
+.auth-eye{
+  position:absolute;right:4px;top:50%;transform:translateY(-50%);
+  width:34px;height:34px;border:none;background:transparent;border-radius:6px;
+  cursor:pointer;color:var(--t3);display:flex;align-items:center;justify-content:center;
+  transition:background .13s,color .13s;
+}
+.auth-eye:hover{background:var(--c2);color:var(--t1)}
+
+.auth-row{display:flex;align-items:center;justify-content:space-between;margin:4px 0 20px}
+.auth-remember{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--t2);cursor:pointer}
+.auth-checkbox{
+  width:16px;height:16px;border:1.5px solid var(--line2);border-radius:4.5px;
+  background:#fff;display:inline-block;position:relative;transition:background .13s,border-color .13s;
+}
+.auth-remember input{position:absolute;opacity:0;width:0;height:0}
+.auth-remember input:checked + .auth-checkbox{background:var(--ac);border-color:var(--ac)}
+.auth-remember input:checked + .auth-checkbox::after{
+  content:"";position:absolute;left:4.6px;top:1.4px;width:4px;height:8px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(43deg);
+}
+
+.auth-submit{
+  width:100%;height:44px;border:none;border-radius:var(--r-sm);cursor:pointer;
+  background:var(--ac);color:#fff;font-size:14.5px;font-weight:550;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:0 1px 3px rgba(47,109,246,.3);transition:background .16s;
+}
+.auth-submit:hover:not(:disabled){background:var(--ac-h)}
+.auth-submit:disabled{opacity:.6;cursor:not-allowed}
+
+.auth-err{
+  display:none;align-items:flex-start;gap:8px;padding:10px 12px;margin-bottom:16px;
+  background:var(--dgr-s);border:1px solid #fbd5d5;border-radius:var(--r-sm);
+  font-size:12.5px;color:var(--dgr);line-height:1.5;
+}
+.auth-err.on{display:flex;animation:shake .3s}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-5px)}
+  75%{transform:translateX(5px)}
+}
+
+.auth-foot{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);
+  text-align:center;font-size:11.5px;color:var(--t3);line-height:1.6}
+.spin{
+  width:15px;height:15px;border:2px solid rgba(255,255,255,.35);
+  border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body class="auth-body">
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6.5 19a4.5 4.5 0 0 1-.5-8.97A6 6 0 0 1 17.7 9.2 4.4 4.4 0 0 1 17.5 19z"/>
+      </svg>
+    </div>
+
+    <h1 class="auth-title">CloudRive</h1>
+    <p class="auth-sub">请输入访问密码</p>
+
+    <div class="auth-err" id="errBox">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2.1" stroke-linecap="round" style="flex-shrink:0;margin-top:1px">
+        <circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16.2v.1"/>
+      </svg>
+      <span id="errText"></span>
+    </div>
+
+    <form id="loginForm" autocomplete="off">
+      <div class="auth-field">
+        <input type="password" id="pwd" placeholder="访问密码" autocomplete="current-password" required>
+        <button type="button" class="auth-eye" id="btnEye" title="显示密码">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="2.6"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="auth-row">
+        <label class="auth-remember">
+          <input type="checkbox" id="remember" checked>
+          <span class="auth-checkbox"></span>
+          <span>保持登录状态</span>
+        </label>
+      </div>
+
+      <button type="submit" class="auth-submit" id="btnSubmit">登录</button>
+    </form>
+
+    <div class="auth-foot">
+      仅限授权访问 · 分享链接无需登录
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const form = $('#loginForm'), pwd = $('#pwd'), btn = $('#btnSubmit');
+const errBox = $('#errBox'), errText = $('#errText');
+
+// 密码框回车即提交（表单已含 submit 按钮，此处仅处理移动端收起键盘）
+pwd.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); form.requestSubmit(); }
+});
+
+// 显示 / 隐藏密码
+$('#btnEye').onclick = () => {
+  const show = pwd.type === 'password';
+  pwd.type = show ? 'text' : 'password';
+  $('#btnEye').title = show ? '隐藏密码' : '显示密码';
+  pwd.focus();
+};
+
+function showErr(msg) {
+  errText.textContent = msg;
+  errBox.classList.add('on');
+  // 重新触发抖动动画
+  errBox.style.animation = 'none';
+  void errBox.offsetWidth;
+  errBox.style.animation = '';
+}
+
+function hideErr() { errBox.classList.remove('on'); }
+
+form.onsubmit = async (e) => {
+  e.preventDefault();
+  hideErr();
+
+  const password = pwd.value;
+  if (!password) { showErr('请输入访问密码'); pwd.focus(); return; }
+
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.innerHTML = '<span class="spin"></span>验证中…';
+
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, remember: $('#remember').checked }),
+    });
+
+    let data = {};
+    try { data = await r.json(); } catch (_) {}
+
+    if (!r.ok) {
+      showErr(data?.detail?.message || `登录失败（${r.status}）`);
+      pwd.select();
+      return;
+    }
+
+    // 未启用认证时后端直接放行，也进入面板
+    btn.innerHTML = '<span class="spin"></span>正在进入…';
+    location.replace('/');
+  } catch (err) {
+    showErr('无法连接服务器，请确认服务已启动');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+};
+
+// 聚焦密码框
+pwd.focus();
+</script>
+</body>
+</html>

@@ -53,12 +53,13 @@ def share_page(slug: str, db: Session = Depends(get_db)):
     if is_folder:
         detail = f"{count} 个文件 · {_fmt_size(size)}"
         action_text = "打包下载 (ZIP)"
-        action_url = f"/api/files/{node.id}/download-zip"
+        # 走公开路由：凭 slug 校验，无需登录
+        action_url = f"/api/public/{slug}/download-zip"
         icon = "folder"
     else:
         detail = _fmt_size(size)
         action_text = "立即下载"
-        action_url = f"/api/files/{node.id}/download"
+        action_url = f"/api/public/{slug}/download"
         icon = "file"
 
     page = f"""<!DOCTYPE html>
@@ -113,10 +114,11 @@ def share_info(slug: str, db: Session = Depends(get_db)):
     if node is None or not node.share_enabled:
         raise not_found("分享链接不存在")
     count, size = (svc.subtree_size(db, node.id) if node.is_folder else (1, node.size or 0))
+    suffix = "download-zip" if node.is_folder else "download"
     return {
         "name": node.name,
         "type": node.type,
         "size": size,
         "file_count": count,
-        "download_url": f"/api/files/{node.id}/download-zip" if node.is_folder else f"/api/files/{node.id}/download",
+        "download_url": f"/api/public/{slug}/{suffix}",
     }

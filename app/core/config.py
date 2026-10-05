@@ -48,6 +48,32 @@ class Settings(BaseSettings):
     # 文件夹打包为 ZIP 时，超过该大小阈值将提示前端分卷
     zip_stream_threshold: int = 2 * 1024 * 1024 * 1024
 
+    # ---- 存储配额 ----
+    # 云盘可用容量上限。留空 = 用磁盘剩余空间。
+    # 支持写法：10737418240（纯字节）或 10GB / 500MB / 2TB
+    storage_quota: str = ""
+
+    # ---- 访问控制 ----
+    # 面板访问密码。留空表示不启用认证（任何人可打开面板）
+    panel_password: str = ""
+    # 登录令牌签名密钥。留空则运行时随机生成（重启后需重新登录）
+    auth_secret: str = ""
+    # 登录态有效期（秒）。默认 30 天
+    session_max_age: int = 30 * 24 * 3600
+    # 记住我：延长登录有效期
+    remember_days: int = 30
+    # 连续输错多少次后临时锁定
+    max_login_attempts: int = 5
+    # 锁定时长（秒）
+    lockout_seconds: int = 300
+    # 是否允许分享链接免登录下载（符合你的需求，默认开启）
+    public_share_download: bool = True
+
+    @property
+    def auth_enabled(self) -> bool:
+        """是否启用面板密码保护。"""
+        return bool(self.panel_password)
+
     @property
     def cors_origin_list(self) -> list[str]:
         raw = (self.cors_origins or "").strip()
