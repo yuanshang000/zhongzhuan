@@ -1,0 +1,14 @@
+# 存储数据（用户文件，不入库）
+document/
+/data/
+*.db
+runtime_settings.json
+
+# 环境
+.env
+venv/
+__pycache__/
+*.py[cod]
+
+# 前端
+node_modules/

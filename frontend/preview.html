@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CloudRive · 界面预览</title>
+<style>
+/* ===========================================================
+   CloudRive 界面预览 —— 内联真实设计系统 + 模拟数据
+   =========================================================== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none !important}
+
+:root{
+  --c0:#ffffff; --c1:#fafbfc; --c2:#f4f6f8; --c3:#eceff3;
+  --line:#e8ebef; --line2:#dde1e7;
+  --t1:#0f172a; --t2:#5a6474; --t3:#98a1b0;
+  --ac:#2f6df6; --ac-h:#2559d8; --ac-s:#eaf1fe; --ac-b:#c9dcff;
+  --ok:#0f9d58; --dgr:#dc2626; --dgr-s:#fef2f2;
+  --sh-xs:0 1px 2px rgba(15,23,42,.05);
+  --sh-sm:0 1px 3px rgba(15,23,42,.07), 0 1px 2px rgba(15,23,42,.04);
+  --sh-md:0 4px 12px rgba(15,23,42,.08), 0 1px 3px rgba(15,23,42,.05);
+  --sh-lg:0 12px 32px rgba(15,23,42,.13), 0 3px 8px rgba(15,23,42,.07);
+  --r-sm:7px; --r:10px; --r-md:12px; --r-lg:16px; --sb-w:246px;
+}
+body{
+  font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",
+              "Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.55;color:var(--t1);background:var(--c2);
+  display:flex;height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased;
+}
+svg{flex-shrink:0;display:block}
+button{font-family:inherit}
+
+.sidebar{width:var(--sb-w);flex-shrink:0;background:var(--c0);
+  border-right:1px solid var(--line);display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:10px;padding:16px 16px 14px}
+.brand-mark{width:34px;height:34px;border-radius:9px;flex-shrink:0;
+  background:linear-gradient(145deg,#4d84ff,#2f6df6);color:#fff;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(47,109,246,.28)}
+.brand-text{display:flex;flex-direction:column;line-height:1.25}
+.brand-name{font-size:14.5px;font-weight:650;letter-spacing:-.15px}
+.brand-tag{font-size:11.5px;color:var(--t3)}
+
+.btn-upload{margin:0 14px 16px;padding:9.5px 14px;border:none;cursor:pointer;
+  background:var(--ac);color:#fff;border-radius:var(--r);font-size:13.5px;font-weight:550;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  box-shadow:0 1px 3px rgba(47,109,246,.3);transition:background .16s}
+.btn-upload:hover{background:var(--ac-h)}
+
+.nav{flex:1;overflow-y:auto;padding:0 10px 12px}
+.nav-title{font-size:10.5px;font-weight:600;color:var(--t3);letter-spacing:.5px;
+  padding:10px 8px 5px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7.5px 9px;border-radius:var(--r-sm);
+  color:var(--t2);cursor:pointer;font-size:13.5px}
+.nav-item:hover{background:var(--c2);color:var(--t1)}
+.nav-item.active{background:var(--ac-s);color:var(--ac-h);font-weight:550}
+.nav-item span:not(.nav-count){flex:1}
+.nav-count{font-size:11px;color:var(--t3);background:var(--c2);padding:1px 6px;
+  border-radius:20px;font-variant-numeric:tabular-nums}
+.nav-item.active .nav-count{background:#fff;color:var(--ac-h)}
+.tree-item{display:flex;align-items:center;gap:7px;padding:6.5px 9px 6.5px 11px;
+  border-radius:var(--r-sm);color:var(--t2);cursor:pointer;font-size:13px}
+.tree-item:hover{background:var(--c2)}
+.tree-item.active{background:var(--ac-s);color:var(--ac-h);font-weight:550}
+
+.sidebar-foot{padding:12px 14px 14px;border-top:1px solid var(--line)}
+.quota{background:var(--c1);border:1px solid var(--line);border-radius:var(--r);padding:11px 12px}
+.quota-head{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:11.5px;color:var(--t2)}
+.quota-head b{font-size:12.5px;color:var(--t1);font-weight:600;font-variant-numeric:tabular-nums}
+.quota-bar{height:5px;background:var(--c3);border-radius:3px;margin:8px 0 7px;overflow:hidden}
+.quota-bar i{display:block;height:100%;width:34%;border-radius:3px;
+  background:linear-gradient(90deg,#4d84ff,#2f6df6)}
+.quota-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+.quota-meta b{color:var(--t2);font-weight:550}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--c1)}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:13px 24px;background:var(--c0);border-bottom:1px solid var(--line);flex-shrink:0}
+.topbar-left{min-width:0}
+.page-title{font-size:17px;font-weight:650;letter-spacing:-.2px;line-height:1.3}
+.crumbs{display:flex;align-items:center;gap:2px;font-size:12.5px;color:var(--t3);margin-top:1px}
+.crumb-sep{color:var(--line2);font-size:11px}
+.crumb.last{color:var(--t2)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.search{display:flex;align-items:center;gap:7px;height:34px;padding:0 11px;
+  background:var(--c1);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--t3)}
+.search input{border:none;outline:none;background:transparent;font-size:13px;width:150px;color:var(--t1)}
+.search input::placeholder{color:var(--t3)}
+.segmented{display:flex;background:var(--c2);border-radius:var(--r-sm);padding:2.5px;gap:2px}
+.seg{width:29px;height:29px;border:none;background:transparent;border-radius:5px;cursor:pointer;
+  color:var(--t3);display:flex;align-items:center;justify-content:center}
+.seg.active{background:#fff;color:var(--ac-h);box-shadow:var(--sh-xs)}
+.icon-btn{width:34px;height:34px;border:1px solid transparent;background:transparent;
+  border-radius:var(--r-sm);cursor:pointer;color:var(--t2);display:flex;
+  align-items:center;justify-content:center}
+.icon-btn:hover{background:var(--c2);border-color:var(--line);color:var(--t1)}
+
+.content{flex:1;overflow-y:auto;padding:18px 24px 28px}
+
+.list-wrap{background:var(--c0);border:1px solid var(--line);border-radius:var(--r-md);
+  overflow:hidden;box-shadow:var(--sh-sm)}
+.list-head,.row{display:grid;grid-template-columns:34px minmax(0,1fr) 96px 148px 92px;
+  align-items:center;gap:12px;padding:0 14px}
+.list-head{height:38px;border-bottom:1px solid var(--line);background:var(--c1);
+  font-size:11px;font-weight:600;color:var(--t3);letter-spacing:.3px}
+.lh-size{text-align:right;padding-right:2px}
+.lh-act{text-align:right}
+.row{height:52px;border-bottom:1px solid var(--c3);transition:background .12s}
+.row:last-child{border-bottom:none}
+.row:hover{background:var(--c1)}
+.row.sel{background:var(--ac-s)}
+
+.checkbox{display:inline-flex;cursor:pointer;position:relative}
+.checkbox input{position:absolute;opacity:0;width:0;height:0}
+.checkbox span{width:16px;height:16px;border:1.5px solid var(--line2);border-radius:4.5px;
+  background:#fff;display:block;position:relative;transition:background .13s,border-color .13s}
+.checkbox input:checked+span{background:var(--ac);border-color:var(--ac)}
+.checkbox input:checked+span::after{content:"";position:absolute;left:4.6px;top:1.4px;
+  width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(43deg)}
+
+.r-name{display:flex;align-items:center;gap:11px;min-width:0}
+.r-ico{width:32px;height:32px;border-radius:8px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center}
+.r-ico.folder{background:#fef4e6;color:#d97706}
+.r-ico.img{background:#eef6ff;color:#0b76d9}
+.r-ico.vid{background:#fdeef4;color:#d63f7a}
+.r-ico.doc{background:#eaf7f1;color:#0f9d58}
+.r-ico.zip{background:#f4f0ff;color:#7048c9}
+.r-ico.gen{background:var(--c2);color:var(--t2)}
+.r-text{min-width:0;flex:1}
+.r-label{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.r-label:hover{color:var(--ac-h);text-decoration:underline;text-underline-offset:2px}
+.r-tags{display:flex;gap:5px;margin-top:1px}
+.tag{font-size:10.5px;padding:0 5px;border-radius:4px;line-height:15px;
+  background:var(--c2);color:var(--t3)}
+.tag.share{background:#e9f9f0;color:#0b8a4d}
+.r-size,.r-time{font-size:12.5px;color:var(--t2);font-variant-numeric:tabular-nums}
+.r-act{display:flex;gap:1px;justify-content:flex-end;opacity:0;transition:opacity .14s}
+.row:hover .r-act,.row.sel .r-act{opacity:1}
+.r-btn{width:28px;height:28px;border:none;background:transparent;border-radius:6px;
+  cursor:pointer;color:var(--t3);display:flex;align-items:center;justify-content:center}
+.r-btn:hover{background:var(--c3);color:var(--t1)}
+.r-btn.dgr:hover{background:var(--dgr-s);color:var(--dgr)}
+
+.grid-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:13px}
+.card{background:var(--c0);border:1px solid var(--line);border-radius:var(--r-md);
+  padding:15px 13px 12px;position:relative;transition:border-color .15s,box-shadow .15s,transform .12s}
+.card:hover{border-color:var(--ac-b);box-shadow:var(--sh-md);transform:translateY(-2px)}
+.card.sel{border-color:var(--ac);background:var(--ac-s)}
+.c-ico{width:44px;height:44px;border-radius:11px;margin-bottom:11px;
+  display:flex;align-items:center;justify-content:center}
+.c-name{font-size:13px;font-weight:500;line-height:1.4;margin-bottom:3px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  word-break:break-all;min-height:36px}
+.c-meta{font-size:11.5px;color:var(--t3);font-variant-numeric:tabular-nums}
+
+.demo-note{max-width:760px;margin:0 auto 16px;background:#fff;border:1px solid var(--line);
+  border-left:3px solid var(--ac);border-radius:var(--r);padding:13px 16px;
+  font-size:13px;color:var(--t2);line-height:1.7;box-shadow:var(--sh-sm)}
+.demo-note b{color:var(--t1)}
+.demo-note code{background:var(--c2);padding:1px 5px;border-radius:4px;
+  font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--ac-h)}
+</style>
+</head>
+<body>
+
+<div class="demo-note">
+  <b>这是界面预览</b>（模拟数据，不连接后端）。要测真实功能请启动服务后访问根路径。
+  试试点击行选中、切换右上角网格视图、悬停行看操作按钮。
+</div>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6.5 19a4.5 4.5 0 0 1-.5-8.97A6 6 0 0 1 17.7 9.2 4.4 4.4 0 0 1 17.5 19z"/></svg>
+    </div>
+    <div class="brand-text"><span class="brand-name">CloudRive</span>
+      <span class="brand-tag">私有云盘</span></div>
+  </div>
+
+  <button class="btn-upload">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 16V4"/><path d="M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg>
+    上传文件
+  </button>
+
+  <nav class="nav">
+    <p class="nav-title">文件</p>
+    <a class="nav-item active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.3l2 2.4h8.7A1.5 1.5 0 0 1 21 9.9V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/></svg>
+      <span>全部文件</span><span class="nav-count">12</span></a>
+    <p class="nav-title">文件夹</p>
+    <div class="tree-item active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.3l2 2.4h8.7A1.5 1.5 0 0 1 21 9.9V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/></svg>
+      <span>设计素材</span></div>
+    <div class="tree-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.3l2 2.4h8.7A1.5 1.5 0 0 1 21 9.9V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/></svg>
+      <span>安装包</span></div>
+    <div class="tree-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.3l2 2.4h8.7A1.5 1.5 0 0 1 21 9.9V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/></svg>
+      <span>客户反馈</span></div>
+  </nav>
+
+  <div class="sidebar-foot">
+    <div class="quota">
+      <div class="quota-head"><span>存储空间</span><b>4.28 TB</b></div>
+      <div class="quota-bar"><i></i></div>
+      <div class="quota-meta"><span><b>128</b> 个文件</span><span><b>9</b> 个文件夹</span></div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <header class="topbar">
+    <div class="topbar-left">
+      <h1 class="page-title">设计素材</h1>
+      <div class="crumbs"><span>全部文件</span><span class="crumb-sep">/</span>
+        <span class="crumb last">设计素材</span></div>
+    </div>
+    <div class="topbar-right">
+      <div class="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.1" stroke-linecap="round"><circle cx="11" cy="11" r="7"/>
+          <path d="m20 20-3.6-3.6"/></svg>
+        <input type="text" placeholder="搜索此文件夹">
+      </div>
+      <div class="segmented">
+        <button class="seg active" id="vList"><svg width="15" height="15" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round">
+          <path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <button class="seg" id="vGrid"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/>
+          <rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+      </div>
+      <button class="icon-btn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.3l2 2.4h8.7A1.5 1.5 0 0 1 21 9.9V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/>
+        <path d="M12 11.5v5M9.5 14h5"/></svg></button>
+      <button class="icon-btn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 11a8 8 0 1 0-.6 4"/><path d="M20 5v6h-6"/></svg></button>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="list-wrap" id="listV">
+      <div class="list-head">
+        <label class="checkbox"><input type="checkbox" id="all"><span></span></label>
+        <span>名称</span><span class="lh-size">大小</span><span>修改时间</span>
+        <span class="lh-act"></span>
+      </div>
+      <div id="rows"></div>
+    </div>
+    <div class="grid-wrap" id="gridV" hidden></div>
+  </div>
+</main>
+
+<script>
+const DATA = [
+  {n:'2026 Q3',        t:'folder', s:0,           d:'2026-09-28 10:24', k:'folder'},
+  {n:'客户反馈',t:'folder', s:0,           d:'2026-09-30 16:08', k:'folder'},
+  {n:'产品宣传视频.mp4', t:'file', s:2450000000,  d:'2026-10-02 14:32', k:'vid'},
+  {n:'界面设计稿.psd',   t:'file', s:184000000,   d:'2026-10-01 09:15', k:'gen'},
+  {n:'用户调研报告.docx', t:'file', s:2360000,     d:'2026-09-29 20:41', k:'doc'},
+  {n:'封面图.png',       t:'file', s:4820000,     d:'2026-09-25 11:03', k:'img', share:1},
+  {n:'数据备份.zip',     t:'file', s:1240000000,  d:'2026-09-20 08:17', k:'zip'},
+  {n:'截图合集.zip',     t:'file', s:340000000,   d:'2026-09-18 22:50', k:'zip'},
+];
+const ACT = {
+  share:'<circle cx="17.5" cy="5.5" r="2.6"/><circle cx="6.5" cy="12" r="2.6"/><circle cx="17.5" cy="18.5" r="2.6"/><path d="m8.8 10.8 6.4-3.9M8.8 13.2l6.4 3.9"/>',
+  down:'<path d="M12 4v12"/><path d="M7.5 11.5 12 16l4.5-4.5"/><path d="M4 19h16"/>',
+  edit:'<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 6.5 17.5 9.5"/>',
+  del:'<path d="M4 7h16"/><path d="M9.5 7V5.5A1.5 1.5 0 0 1 11 4h2a1.5 1.5 0 0 1 1.5 1.5V7"/><path d="M6.5 7l.8 12A1.5 1.5 0 0 0 8.8 20.5h6.4a1.5 1.5 0 0 0 1.5-1.4L17.5 7"/>',
+};
+const ICON = {
+  folder:'<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.3l2 2.4h8.7A1.5 1.5 0 0 1 21 9.9V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/>',
+  vid:'<rect x="3" y="6" width="12" height="12" rx="2"/><path d="m15 10.5 5-3v9l-5-3z"/>',
+  img:'<rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 16 4.5-4.5 3 3L15 11l5 5"/>',
+  doc:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/>',
+  zip:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M11 10.5h2M11 13.5h2M11 16.5h2"/>',
+  gen:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+};
+const fmt = n => { if(!n) return '—'; const u=['B','KB','MB','GB','TB']; let i=0,v=n;
+  while(v>=1024&&i<u.length-1){v/=1024;i++;} return i===0?`${v} B`:`${v<10?v.toFixed(1):Math.round(v)} ${u[i]}`; };
+const sv = (k,sz=17) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none"
+  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
+const btn = (a,t,c='') => `<button class="r-btn ${c}" title="${t}"><svg width="15" height="15"
+  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+  stroke-linejoin="round">${ACT[a]}</svg></button>`;
+
+function renderRows(){
+  document.getElementById('rows').innerHTML = DATA.map((d,i)=>`
+    <div class="row" data-i="${i}">
+      <label class="checkbox"><input type="checkbox" class="ck" data-i="${i}"><span></span></label>
+      <div class="r-name">
+        <div class="r-ico ${d.k}">${sv(d.k)}</div>
+        <div class="r-text">
+          <div class="r-label">${d.n}</div>
+          ${d.t==='folder'?'<div class="r-tags"><span class="tag">文件夹</span></div>'
+            :d.share?'<div class="r-tags"><span class="tag share">已分享</span></div>':''}
+        </div>
+      </div>
+      <span class="r-size">${fmt(d.s)}</span>
+      <span class="r-time">${d.d}</span>
+      <div class="r-act">${btn('share','分享')}${btn('down','下载')}${btn('edit','重命名')}${btn('del','删除','dgr')}</div>
+    </div>`).join('');
+}
+function renderCards(){
+  document.getElementById('gridV').innerHTML = DATA.map((d,i)=>`
+    <div class="card" data-i="${i}">
+      <div class="c-ico r-ico ${d.k}">${sv(d.k,22)}</div>
+      <div class="c-name">${d.n}</div>
+      <div class="c-meta">${d.t==='folder'?'文件夹':fmt(d.s)+(d.share?' · 已分享':'')}</div>
+    </div>`).join('');
+}
+renderRows(); renderCards();
+
+document.getElementById('vList').onclick = () => {
+  document.getElementById('listV').hidden=false; document.getElementById('gridV').hidden=true;
+  this.classList.add('active'); document.getElementById('vGrid').classList.remove('active');
+};
+document.getElementById('vGrid').onclick = () => {
+  document.getElementById('gridV').hidden=false; document.getElementById('listV').hidden=true;
+  this.classList.add('active'); document.getElementById('vList').classList.remove('active');
+};
+document.getElementById('all').onchange = e => {
+  document.querySelectorAll('.ck').forEach(c => { c.checked=e.target.checked;
+    c.closest('.row').classList.toggle('sel', e.target.checked); });
+};
+document.getElementById('rows').addEventListener('change', e => {
+  if(!e.target.classList.contains('ck')) return;
+  e.target.closest('.row').classList.toggle('sel', e.target.checked);
+});
+document.getElementById('gridV').addEventListener('click', e => {
+  if(e.target.closest('.card')) e.target.closest('.card').classList.toggle('sel');
+});
+</script>
+</body>
+</html>
