@@ -6,8 +6,9 @@
 - GET  /api/health              健康检查
 - GET  /login登录页本身（否则用户看不到登录表单）
 - GET  /s/{slug}                分享页
+- GET  /p/{slug}                公开预览页（视频可播、图片可看）
 - GET  /api/share/{slug}        分享信息
-- GET  /api/public/{slug}/...   公开下载（凭 slug 校验，非任意文件）
+- GET  /api/public/{slug}/...   公开下载与直链（凭 slug 校验，非任意文件）
 - GET  /static/*                静态资源（登录页要靠它加载样式）
 
 安全要点：/api/files/{id}/download **不在白名单**。
@@ -31,8 +32,10 @@ PUBLIC_PATTERNS = [
     r"^/api/health$",
     r"^/login/?$",                 # 登录页本身
     r"^/s/[^/]+$",                 # 分享页
+    r"^/p/[^/]+$",                 # 公开预览页
     r"^/api/share/[^/]+$",         # 分享信息
     r"^/api/public/[^/]+/download(-zip)?$",  # 公开下载（凭 slug）
+    r"^/api/public/[^/]+/(raw|meta)$",       # 公开直链（图床/视频引用）与元信息
     r"^/static/",
     r"^/favicon\.ico$",
 ]

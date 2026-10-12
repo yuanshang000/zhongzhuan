@@ -1,6 +1,8 @@
 """认证相关接口：登录、登出、状态查询。"""
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel
 
@@ -21,6 +23,8 @@ class StatusOut(BaseModel):
     authenticated: bool
     # 供前端判断是否需要显示登录页
     must_login: bool
+    # 登录态剩余有效期（秒）；未登录为 None
+    expires_in: int | None = None
 
 
 @router.post("/login")
@@ -69,6 +73,7 @@ def login(payload: LoginIn, request: Request, response: Response):
         "ok": True,
         "token": token,
         "expires_in": ttl,
+        "expires_at": int(time.time()) + ttl,
         "remember": payload.remember,
     }
 
@@ -89,4 +94,13 @@ def status(request: Request):
     """查询认证状态。前端启动时调用决定显示登录页还是面板。"""
     enabled = settings.auth_enabled
     ok = auth.is_authenticated(request)
-    return StatusOut(enabled=enabled, authenticated=ok, must_login=enabled and not ok)
+    left: int | None = None
+    if ok:
+        exp = auth.token_expire_at(auth.extract_token(request))
+        left = max(0, int(exp - time.time())) if exp else None
+    return StatusOut(
+        enabled=enabled,
+        authenticated=ok,
+        must_login=enabled and not ok,
+        expires_in=left,
+    )

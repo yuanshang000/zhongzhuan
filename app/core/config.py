@@ -58,10 +58,10 @@ class Settings(BaseSettings):
     panel_password: str = ""
     # 登录令牌签名密钥。留空则运行时随机生成（重启后需重新登录）
     auth_secret: str = ""
-    # 登录态有效期（秒）。默认 30 天
-    session_max_age: int = 30 * 24 * 3600
-    # 记住我：延长登录有效期
-    remember_days: int = 30
+    # 登录态有效期（秒）。默认 7 天，过期后需重新登录
+    session_max_age: int = 7 * 24 * 3600
+    # 记住我：延长登录有效期（同样最长 7 天，到期必须重新登录）
+    remember_days: int = 7
     # 连续输错多少次后临时锁定
     max_login_attempts: int = 5
     # 锁定时长（秒）

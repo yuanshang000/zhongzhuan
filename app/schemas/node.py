@@ -93,6 +93,12 @@ class ShareOut(BaseModel):
     slug: str
     url: str
     enabled: bool
+    # 直链（inline，可直接贴进 <img>/<video>）
+    raw_url: str | None = None
+    # 带排版的预览页
+    preview_url: str | None = None
+    # 该节点能否在线预览
+    preview_kind: str = "none"
 
 
 class ShareToggleIn(BaseModel):

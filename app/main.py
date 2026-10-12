@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth_api, capacity_api, download, files, nodes, share
+from app.api import auth_api, capacity_api, download, files, nodes, preview, share
 from app.api import settings as settings_api
 from app.core.config import settings
 from app.core.db import Base, engine
@@ -59,6 +59,7 @@ app.include_router(nodes.router)
 app.include_router(files.router)
 app.include_router(download.router)
 app.include_router(share.router)
+app.include_router(preview.router)
 app.include_router(settings_api.router)
 
 

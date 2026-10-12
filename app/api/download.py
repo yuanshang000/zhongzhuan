@@ -21,6 +21,7 @@ from app.core.errors import ApiError, bad_request, forbidden, not_found
 from app.models.node import Node, NodeType
 from app.schemas import ShareOut, ShareToggleIn
 from app.services import node_service as svc
+from app.services.preview import preview_kind
 from app.services.share_service import ensure_slug, share_url
 from app.services.storage import get_storage
 
@@ -208,12 +209,24 @@ def _relative_path(db: Session, root: Node, node: Node) -> str:
 
 
 # ---------------- 分享 ----------------
+def _share_payload(node: Node, slug: str, enabled: bool) -> ShareOut:
+    """统一的分享返回体，附带直链与预览页地址。"""
+    return ShareOut(
+        slug=slug,
+        url=share_url(slug),
+        enabled=enabled,
+        raw_url=f"/api/public/{slug}/raw",
+        preview_url=f"/p/{slug}",
+        preview_kind=preview_kind(node),
+    )
+
+
 @router.get("/api/nodes/{node_id}/share", response_model=ShareOut)
 def get_share(node_id: str, db: Session = Depends(get_db)):
     node = _node_or_404(db, node_id)
     slug = ensure_slug(db, node)
     db.commit()
-    return ShareOut(slug=slug, url=share_url(slug), enabled=node.share_enabled)
+    return _share_payload(node, slug, node.share_enabled)
 
 
 @router.post("/api/nodes/{node_id}/share", response_model=ShareOut)
@@ -228,4 +241,4 @@ def toggle_share(node_id: str, payload: ShareToggleIn, db: Session = Depends(get
         slug = node.share_slug
         node.share_enabled = False
     db.commit()
-    return ShareOut(slug=slug, url=share_url(slug), enabled=node.share_enabled)
+    return _share_payload(node, slug, node.share_enabled)

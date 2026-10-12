@@ -30,6 +30,15 @@ class StorageBackend(ABC):
     def presign_get(self, path: str, filename: str, expires: int = 3600) -> str | None:
         """返回直连下载 URL；local 后端返回 None。"""
 
+    def presign_get_inline(
+        self, path: str, filename: str, content_type: str | None = None, expires: int = 3600
+    ) -> str | None:
+        """返回 inline 直连 URL（浏览器内渲染）；local 后端返回 None。
+
+        仅 S3 需要覆写，local 后端由应用自己流式输出。
+        """
+        return None
+
     # ---------- 服务端读写（供打包/ 小文件使用）----------
     # root 仅 local 后端使用：指定历史存储根目录以读取切换路径前的文件
     @abstractmethod
@@ -40,9 +49,18 @@ class StorageBackend(ABC):
 
     @abstractmethod
     def read_chunks(
-        self, path: str, chunk_size: int = 1024 * 1024, root: Path | None = None
+        self,
+        path: str,
+        chunk_size: int = 1024 * 1024,
+        root: Path | None = None,
+        start: int = 0,
+        length: int | None = None,
     ) -> AsyncIterator[bytes]:
-        """分块读取，用于流式打包 ZIP，避免整文件进内存。"""
+        """分块读取，用于流式打包 ZIP，避免整文件进内存。
+
+        start / length 支持按字节区间读取，视频播放器的Range 请求
+        （拖动进度条）依赖此能力。
+        """
 
     @abstractmethod
     def write_stream(self, path: str, stream, size: int = 0, root: Path | None = None) -> None:
@@ -120,14 +138,28 @@ class LocalStorage(StorageBackend):
         return self._full(path, root).exists()
 
     async def read_chunks(
-        self, path: str, chunk_size: int = 1024 * 1024, root: Path | None = None
+        self,
+        path: str,
+        chunk_size: int = 1024 * 1024,
+        root: Path | None = None,
+        start: int = 0,
+        length: int | None = None,
     ) -> AsyncIterator[bytes]:
         p = self._full(path, root)
         if not p.exists():
             raise FileNotFoundError(path)
+        remaining = length
         with open(p, "rb") as f:
-            while chunk := f.read(chunk_size):
-                yield chunk
+            if start:
+                f.seek(start)
+            while chunk_size > 0 and (remaining is None or remaining > 0):
+                want = chunk_size if remaining is None else min(chunk_size, remaining)
+                data = f.read(want)
+                if not data:
+                    break
+                if remaining is not None:
+                    remaining -= len(data)
+                yield data
 
     def write_stream(self, path: str, stream, size: int = 0, root: Path | None = None) -> None:
         full = self._ensure_parent(path, root)
@@ -183,6 +215,31 @@ class S3Storage(StorageBackend):
             ExpiresIn=expires,
         )
 
+    def presign_get_inline(
+        self, path: str, filename: str, content_type: str | None = None, expires: int = 3600
+    ) -> str | None:
+        """inline 预签名：浏览器直接渲染/播放，而不是触发下载。
+
+        预览场景必需 —— attachment 会让<video>/<img> 直接变成下载。
+        """
+        from urllib.parse import quote
+
+        ascii_name = (filename.encode("ascii", "ignore").decode() or "file").replace('"', "")
+        disposition = (
+            f"inline; filename=\"{ascii_name}\"; "
+            f"filename*=UTF-8''{quote(filename, safe='')}"
+        )
+        params = {
+            "Bucket": self.bucket,
+            "Key": path,
+            "ResponseContentDisposition": disposition,
+        }
+        if content_type:
+            params["ResponseContentType"] = content_type
+        return self.client.generate_presigned_url(
+            "get_object", Params=params, ExpiresIn=expires
+        )
+
     def size_of(self, path: str, root: Path | None = None) -> int:
         return int(self.client.head_object(Bucket=self.bucket, Key=path)["ContentLength"])
 
@@ -194,10 +251,19 @@ class S3Storage(StorageBackend):
             return False
 
     async def read_chunks(
-        self, path: str, chunk_size: int = 1024 * 1024, root: Path | None = None
+        self,
+        path: str,
+        chunk_size: int = 1024 * 1024,
+        root: Path | None = None,
+        start: int = 0,
+        length: int | None = None,
     ) -> AsyncIterator[bytes]:
         # S3 场景下文件夹打包建议改用服务端生成，避免占用本机带宽
-        obj = self.client.get_object(Bucket=self.bucket, Key=path)
+        kwargs = {"Bucket": self.bucket, "Key": path}
+        if start or length is not None:
+            end = "" if length is None else start + max(0, length) - 1
+            kwargs["Range"] = f"bytes={start}-{end}"
+        obj = self.client.get_object(**kwargs)
         while chunk := obj["Body"].read(chunk_size):
             yield chunk
 

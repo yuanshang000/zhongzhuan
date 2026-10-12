@@ -101,6 +101,31 @@ def verify_token(token: str | None) -> bool:
     return time.time() < expire_at
 
 
+def token_expire_at(token: str | None) -> int | None:
+    """取出令牌中的过期时间戳（秒）。
+
+    签名无效或格式错误时返回 None。
+    前端用它来提示"登录态还剩多久"，避免用户到点才发现被踢出。
+    """
+    if not token:
+        return None
+
+    parts = token.split(".")
+    if len(parts) != 2:
+        return None
+
+    payload, sig_b64 = parts
+    try:
+        expect = hmac.new(
+            _get_secret().encode(), payload.encode(), hashlib.sha256
+        ).digest()
+        if not hmac.compare_digest(_b64d(sig_b64), expect):
+            return None
+        return int(_b64d(payload).decode())
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------- 防爆破
 
 class _AttemptTracker:

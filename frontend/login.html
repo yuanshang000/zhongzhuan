@@ -80,6 +80,13 @@ body.auth-body{
 
 .auth-foot{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);
   text-align:center;font-size:11.5px;color:var(--t3);line-height:1.6}
+/* 会话过期提示：蓝色而非红色，因为这不是错误，只是需要重新验证 */
+.auth-expired{
+  display:none;align-items:center;gap:8px;padding:10px 12px;margin-bottom:16px;
+  background:var(--ac-s);border:1px solid var(--ac-b);border-radius:var(--r-sm);
+  font-size:12.5px;color:var(--ac-h);line-height:1.5;
+}
+.auth-expired.on{display:flex}
 .spin{
   width:15px;height:15px;border:2px solid rgba(255,255,255,.35);
   border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;
@@ -99,7 +106,16 @@ body.auth-body{
     </div>
 
     <h1 class="auth-title">CloudRive</h1>
-    <p class="auth-sub">请输入访问密码</p>
+    <p class="auth-sub" id="authSub">请输入访问密码</p>
+
+    <div class="auth-expired" id="expiredBox">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"
+        style="flex-shrink:0;margin-top:1px">
+        <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 1.9"/>
+      </svg>
+      <span>登录会话已过期（有效期 7 天），请重新验证密码</span>
+    </div>
 
     <div class="auth-err" id="errBox">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -166,6 +182,13 @@ function showErr(msg) {
 
 function hideErr() { errBox.classList.remove('on'); }
 
+// 会话过期（?expired=1）：给出说明而不是报错，让用户知道只是需要重新验证
+(function initExpiredHint() {
+  if (new URLSearchParams(location.search).get('expired') !== '1') return;
+  $('#expiredBox').classList.add('on');
+  $('#authSub').textContent = '请重新验证密码以继续';
+})();
+
 form.onsubmit = async (e) => {
   e.preventDefault();
   hideErr();
@@ -195,6 +218,8 @@ form.onsubmit = async (e) => {
 
     // 未启用认证时后端直接放行，也进入面板
     btn.innerHTML = '<span class="spin"></span>正在进入…';
+    // 去掉 expired 标记，避免登录后刷新又看到过期提示
+    history.replaceState(null, '', '/login');
     location.replace('/');
   } catch (err) {
     showErr('无法连接服务器，请确认服务已启动');

@@ -164,6 +164,11 @@
       <button class="link-btn" id="btnClearSel">取消选择</button>
     </div>
     <div class="ab-right">
+      <button class="btn-sm" data-act="preview">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="2.6"/>
+        </svg>预览</button>
       <button class="btn-sm" data-act="download">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
@@ -265,6 +270,43 @@
 </div>
 
 <input type="file" id="fileInput" multiple hidden>
+
+<!-- ================= 预览层 ================= -->
+<div class="pv-mask" id="pvMask" hidden>
+  <div class="pv-bar">
+    <div class="pv-info">
+      <b id="pvName"></b>
+      <span id="pvMeta"></span>
+    </div>
+    <div class="pv-acts">
+      <a class="pv-btn" id="pvOpen" target="_blank" rel="noopener" title="在新标签页打开预览页">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 4h6v6"/><path d="M20 4 10.5 13.5"/><path d="M19 14v5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19V8a1.5 1.5 0 0 1 1.5-1.5H11"/>
+        </svg>新窗口
+      </a>
+      <a class="pv-btn" id="pvDownload" title="下载原文件">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 4v12"/><path d="M7.5 11.5 12 16l4.5-4.5"/><path d="M4 19h16"/>
+        </svg>下载
+      </a>
+      <button class="pv-btn" id="pvCopy" title="复制直链">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="12" height="12" rx="2"/>
+          <path d="M5 15H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 3h9A1.5 1.5 0 0 1 14.5 4.5V5"/>
+        </svg>复制直链
+      </button>
+      <button class="pv-btn x" id="pvClose" title="关闭 (Esc)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.1" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="pv-stage" id="pvStage"></div>
+</div>
 
 <script src="/static/app.js"></script>
 </body>

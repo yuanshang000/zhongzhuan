@@ -43,13 +43,13 @@ async function api(url, opt = {}) {
       credentials: 'same-origin',
     });
 
-    // 401 表示未登录或令牌过期：跳登录页
+    // 401 表示未登录或会话已过期（默认 7 天）：跳登录页
     if (r.status === 401) {
       localStorage.removeItem('cr_token');
       if (!location.pathname.startsWith('/s/') && !location.pathname.startsWith('/login')) {
-        location.replace('/login');
+        location.replace('/login?expired=1');
       }
-      throw new Error('请先登录');
+      throw new Error('登录已过期，请重新登录');
     }
 
     if (!r.ok) {
@@ -96,15 +96,41 @@ function kind(name, isFolder) {
   const e = (name.split('.').pop() || '').toLowerCase();
   if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'].includes(e)) return 'img';
   if (['mp4', 'mkv', 'mov', 'avi', 'webm', 'flv', 'm4v', 'rmvb'].includes(e)) return 'vid';
+  if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'].includes(e)) return 'aud';
   if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'iso'].includes(e)) return 'zip';
   if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'pdf', 'txt', 'md', 'csv'].includes(e)) return 'doc';
   return 'gen';
 }
 
+/* 预览类型判定。必须与后端 app/services/preview.py 的分类保持一致，
+   否则会出现「前端说是视频、后端却按二进制下载」的不一致。 */
+const PV_EXT = {
+  image: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif', 'heic', 'heif'],
+  video: ['mp4', 'webm', 'ogv', 'mov', 'm4v', 'mkv', 'avi', 'flv', 'wmv', '3gp'],
+  audio: ['mp3', 'wav', 'ogg', 'oga', 'm4a', 'aac', 'flac', 'opus'],
+  pdf:   ['pdf'],
+  text:  ['txt', 'md', 'markdown', 'json', 'csv', 'log', 'xml', 'yml', 'yaml',
+          'py', 'js', 'ts', 'tsx', 'jsx', 'html', 'css', 'scss', 'go', 'rs',
+          'java', 'c', 'h', 'cpp', 'hpp', 'sh', 'bat', 'ps1', 'ini', 'toml', 'sql'],
+};
+
+/** 返回该文件的预览类型；文件夹与不支持的格式返回 'none' */
+function previewKind(name, isFolder) {
+  if (isFolder) return 'none';
+  const e = (name.split('.').pop() || '').toLowerCase();
+  for (const [k, list] of Object.entries(PV_EXT)) {
+    if (list.includes(e)) return k;
+  }
+  return 'none';
+}
+
+const canPreview = (n) => n.type !== 'folder' && previewKind(n.name, false) !== 'none';
+
 const ICONS = {
   folder: '<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.3l2 2.4h8.7A1.5 1.5 0 0 1 21 9.9V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/>',
   img: '<rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 16 4.5-4.5 3 3L15 11l5 5"/>',
   vid: '<rect x="3" y="6" width="12" height="12" rx="2"/><path d="m15 10.5 5-3v9l-5-3z"/>',
+  aud: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
   zip: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M11 10.5h2M11 13.5h2M11 16.5h2"/>',
   doc: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 16.5h4"/>',
   gen: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
@@ -116,6 +142,7 @@ const svgIcon = (k, size = 17) =>
 const ACT_ICONS = {
   share: '<circle cx="17.5" cy="5.5" r="2.6"/><circle cx="6.5" cy="12" r="2.6"/><circle cx="17.5" cy="18.5" r="2.6"/><path d="m8.8 10.8 6.4-3.9M8.8 13.2l6.4 3.9"/>',
   down: '<path d="M12 4v12"/><path d="M7.5 11.5 12 16l4.5-4.5"/><path d="M4 19h16"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="2.6"/>',
   del: '<path d="M4 7h16"/><path d="M9.5 7V5.5A1.5 1.5 0 0 1 11 4h2a1.5 1.5 0 0 1 1.5 1.5V7"/><path d="M6.5 7l.8 12A1.5 1.5 0 0 0 8.8 20.5h6.4a1.5 1.5 0 0 0 1.5-1.4L17.5 7"/>',
   edit: '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 6.5 17.5 9.5"/>',
 };
@@ -439,6 +466,7 @@ function renderRows(list) {
   $('#fileList').innerHTML = list.map(n => {
     const k = kind(n.name, n.type === 'folder');
     const sel = state.selected.has(n.id);
+    const pv = previewKind(n.name, n.type === 'folder');
     const tag = n.type === 'folder'
       ? '<span class="tag">文件夹</span>'
       : (n.share_enabled ? '<span class="tag share">已分享</span>' : '');
@@ -454,6 +482,7 @@ function renderRows(list) {
       <span class="r-size">${n.type === 'folder' ? '—' : fmtSize(n.size)}</span>
       <span class="r-time">${fmtTime(n.updated_at)}</span>
       <div class="r-act">
+        ${pv !== 'none' ? rowBtn('eye', n.id, '预览') : ''}
         ${rowBtn('share', n.id, '分享')}
         ${rowBtn('down', n.id, '下载')}
         ${rowBtn('edit', n.id, '重命名')}
@@ -467,6 +496,7 @@ function renderCards(list) {
   $('#gridView').innerHTML = list.map(n => {
     const k = kind(n.name, n.type === 'folder');
     const sel = state.selected.has(n.id);
+    const pv = previewKind(n.name, n.type === 'folder');
     const meta = n.type === 'folder'
       ? '文件夹'
       : `${fmtSize(n.size)}${n.share_enabled ? ' · 已分享' : ''}`;
@@ -474,6 +504,10 @@ function renderCards(list) {
       <div class="card-check">
         <label class="checkbox"><input type="checkbox" class="row-check" data-id="${n.id}" ${sel ? 'checked' : ''}><span></span></label>
       </div>
+      ${pv !== 'none' ? `<button class="card-eye" data-eye="${n.id}" title="预览">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ACT_ICONS.eye}</svg>
+      </button>` : ''}
       <div class="c-ico r-ico ${k}">${svgIcon(k, 22)}</div>
       <div class="c-name" title="${esc(n.name)}">${esc(n.name)}</div>
       <div class="c-meta">${meta}</div>
@@ -880,18 +914,51 @@ async function doShare(id) {
   catch (e) { return toast(e.message); }
 
   const full = location.origin + s.url;
+  const rawUrl = location.origin + (s.raw_url || '');
+  const pvUrl = location.origin + (s.preview_url || '');
+  const pvKind = s.preview_kind || 'none';
+  const isFolder = state.nodes.find(x => x.id === id)?.type === 'folder';
+
+  // 文件夹没有直链/预览页可讲，只保留打包下载链接。
+  // 每行都带标签：三个地址长得像，不标出来用户分不清哪个能直接贴 <img>
+  const linkRows = isFolder ? '' : `
+    <div class="share-sub">免登录直链与预览</div>
+    <div class="share-field">
+      <span class="share-tag">直链</span>
+      <input type="text" id="rawInput" value="${esc(rawUrl)}" readonly title="点击全选，可手动复制">
+      <button class="btn-copy" id="btnCopyRaw">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 3h9A1.5 1.5 0 0 1 14.5 4.5V5"/></svg>复制</button>
+    </div>
+    <div class="share-field">
+      <span class="share-tag">预览页</span>
+      <input type="text" id="pvInput" value="${esc(pvUrl)}" readonly title="点击全选，可手动复制">
+      <button class="btn-copy" id="btnCopyPv">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 3h9A1.5 1.5 0 0 1 14.5 4.5V5"/></svg>复制</button>
+    </div>
+    <div class="note">${pvKind === 'none'
+      ? '直链可用于 &lt;a href&gt; 下载。该格式不支持在线预览，预览页会提示下载。'
+      : '直链是 inline 地址，可直接贴进 &lt;img&gt; / &lt;video&gt; 当图床或视频源用；预览页是带播放器的观看页。'}</div>`;
+
   modal('分享链接', `
     <p>${s.enabled ? '链接已生成，任何人打开即可下载，无需登录。' : '分享已关闭，链接暂时失效。'}</p>
+    <div class="share-sub">分享页</div>
     <div class="share-field">
+      <span class="share-tag">分享页</span>
       <input type="text" id="shareInput" value="${esc(full)}" readonly
         title="点击全选，可手动复制">
       <button class="btn-copy" id="btnCopy">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button>
+          <rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 3h9A1.5 1.5 0 0 1 14.5 4.5V5"/></svg>复制</button>
     </div>
-    <div class="note">链接永久有效，直到文件被删除。${s.enabled ? '' : '重新开启后仍是同一链接。'}</div>
+    ${linkRows}
+    <div class="note" style="margin-top:13px">链接永久有效，直到文件被删除。${s.enabled ? '' : '重新开启后仍是同一链接。'}</div>
     <div class="acts" style="margin-top:16px">
+      ${pvUrl && !isFolder ? `<a class="act act-ghost" href="${esc(pvUrl)}" target="_blank" rel="noopener">打开预览页</a>` : ''}
       <button class="act act-ghost" id="btnToggleShare">${s.enabled ? '关闭分享' : '开启分享'}</button>
       <button class="act act-primary" id="btnDone">完成</button>
     </div>`);
@@ -900,6 +967,23 @@ async function doShare(id) {
     const ok = await copyWithFeedback(full);
     if (ok) flashCopied($('#btnCopy'));
   };
+
+  // 直链与预览页：共用同一套「复制 + 点击全选」绑定
+  const bindCopy = (btnId, inputId, text, msg) => {
+    const btn = $(btnId), input = $(inputId);
+    if (!btn || !input) return;
+    btn.onclick = async () => {
+      if (await copyWithFeedback(text, msg)) flashCopied(btn);
+    };
+    // 点击输入框即全选，方便手动复制（复制按钮失效时的兜底）
+    input.onclick = function () {
+      this.focus();
+      this.select();
+      this.setSelectionRange(0, text.length);
+    };
+  };
+  bindCopy('#btnCopyRaw', '#rawInput', rawUrl, '直链已复制');
+  bindCopy('#btnCopyPv', '#pvInput', pvUrl, '预览页链接已复制');
 
   // 点击输入框即全选，方便手动复制（复制按钮失效时的兜底）
   $('#shareInput').onclick = function () {
@@ -977,6 +1061,128 @@ function doDownload(ids) {
     }, i * 350);
   });
 }
+
+/** 批量预览：只处理第一个可预览项，其余给出提示而不是静默忽略 */
+function doPreviewSelection(ids) {
+  const nodes = ids.map(id => state.nodes.find(x => x.id === id)).filter(Boolean);
+  const target = nodes.find(canPreview);
+  if (!target) return toast('所选项目都不支持在线预览');
+  const skipped = nodes.length - 1;
+  openPreview(target);
+  if (skipped > 0) setTimeout(() => toast(`已打开第一个，其余 ${skipped} 项未预览`), 400);
+}
+
+/* ---------------- 预览层 ---------------- */
+// 面板内直接看图/播视频，不离开当前目录。
+// 直链与公开预览页在分享弹窗里获取（需要先有分享码）。
+let _pvTextAbort = null;
+// 当前预览的节点 id，复制直链时用它换取分享码
+let _pvNodeId = null;
+
+function openPreview(node) {
+  if (!node || node.type === 'folder') return doDownload([node.id]);
+
+  const kind = previewKind(node.name, false);
+  if (kind === 'none') {
+    toast('该格式暂不支持在线预览');
+    return doDownload([node.id]);
+  }
+
+  const mask = $('#pvMask');
+  const stage = $('#pvStage');
+  const src = `/api/files/${node.id}/preview`;
+
+  $('#pvName').textContent = node.name;
+  $('#pvMeta').textContent = `${fmtSize(node.size)} · ${
+    { image: '图片', video: '视频', audio: '音频', pdf: 'PDF', text: '文本' }[kind] || ''
+  }`;
+  $('#pvDownload').href = `/api/files/${node.id}/download`;
+  // 面板内预览不依赖分享码，因此"新窗口"指向的是同一个预览接口
+  $('#pvOpen').href = src;
+  $('#pvOpen').hidden = kind === 'text';
+
+  mask.hidden = false;
+  stage.innerHTML = '<div class="pv-load">加载中…</div>';
+  _pvNodeId = node.id;
+
+  if (kind === 'image') {
+    stage.innerHTML = `<img src="${src}" alt="${esc(node.name)}">`;
+    const img = stage.querySelector('img');
+    img.onclick = () => img.classList.toggle('zoom');
+    img.onerror = () => { stage.innerHTML = '<div class="pv-none">图片加载失败<br>文件可能已被删除</div>'; };
+  } else if (kind === 'video') {
+    // controls + preload=metadata：不预加载整段，拖进度条靠服务端 Range
+    stage.innerHTML = `<video src="${src}" controls autoplay playsinline preload="metadata"></video>`;
+  } else if (kind === 'audio') {
+    stage.innerHTML = `<audio src="${src}" controls autoplay></audio>`;
+  } else if (kind === 'pdf') {
+    stage.innerHTML = `<iframe src="${src}" title="${esc(node.name)}"></iframe>`;
+  } else {
+    openTextPreview(node, src, stage);
+  }
+}
+
+/** 文本预览：只取前 512 KB，避免超大日志把页面卡死 */
+function openTextPreview(node, src, stage) {
+  _pvTextAbort?.abort();
+  const ctrl = new AbortController();
+  _pvTextAbort = ctrl;
+
+  stage.innerHTML = '<pre id="pvPre">加载中…</pre>';
+  fetch(src, { signal: ctrl.signal, credentials: 'same-origin' })
+    .then(r => { if (!r.ok) throw new Error('bad'); return r.text(); })
+    .then(t => {
+      const pre = $('#pvPre');
+      if (!pre) return;                       // 加载中用户已关闭预览
+      const LIMIT = 512 * 1024;
+      pre.textContent = t.length > LIMIT
+        ? t.slice(0, LIMIT) + '\n\n... 内容过长，已截断，请下载查看完整内容'
+        : (t || '（空文件）');
+    })
+    .catch(e => {
+      if (e.name === 'AbortError') return;
+      const pre = $('#pvPre');
+      if (pre) pre.textContent = '加载失败，请下载查看';
+    });
+}
+
+function closePreview() {
+  _pvTextAbort?.abort();
+  _pvTextAbort = null;
+  _pvNodeId = null;
+  const mask = $('#pvMask');
+  if (!mask || mask.hidden) return;
+  mask.hidden = true;
+  // 清空 src 才能真正停止视频/音频播放并释放解码器
+  $('#pvStage').innerHTML = '';
+}
+
+/* ---------------- 预览层事件 ---------------- */
+$('#pvClose').onclick = closePreview;
+
+// 点预览层空白处关闭。点在图片/视频/文本上不关，避免误触丢失播放进度。
+$('#pvMask').addEventListener('click', (e) => {
+  if (e.target.id === 'pvMask' || e.target.id === 'pvStage') closePreview();
+});
+
+// 复制直链：预览层本身不需要登录态也能拿到地址，
+// 但直链要基于分享码，所以这里按需开启分享后再复制。
+$('#pvCopy').onclick = async () => {
+  if (!_pvNodeId) return toast('未在预览任何文件');
+  try {
+    const s = await api(`/api/nodes/${_pvNodeId}/share`);
+    const url = location.origin + s.raw_url;
+    await copyWithFeedback(url, '直链已复制，可直接用于 <img> / <video>');
+  } catch (e) { toast(e.message); }
+};
+
+// 键盘：Esc 优先关预览层（预览开着时不该去关弹窗）
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('#pvMask').hidden) {
+    e.stopPropagation();
+    closePreview();
+  }
+}, true);
 
 /* ---------------- 弹窗 ---------------- */
 function modal(title, html) {
@@ -1057,7 +1263,16 @@ document.addEventListener('click', async (e) => {
     const id = open.dataset.open;
     const n = state.nodes.find(x => x.id === id);
     if (n?.type === 'folder') await load(id);
-    else if (n) { const a = document.createElement('a'); a.href = `/api/files/${id}/download`; a.click(); }
+    // 可预览类型直接开预览层，其余回落为下载（保持原有行为）
+    else if (n) canPreview(n) ? openPreview(n) : doDownload([id]);
+    return;
+  }
+
+  // 网格卡片右上角的预览按钮
+  const eye = t.closest('[data-eye]');
+  if (eye) {
+    const n = state.nodes.find(x => x.id === eye.dataset.eye);
+    if (n) openPreview(n);
     return;
   }
 
@@ -1067,7 +1282,7 @@ document.addEventListener('click', async (e) => {
     const id = card.dataset.id;
     const n = state.nodes.find(x => x.id === id);
     if (n?.type === 'folder') await load(id);
-    else { const a = document.createElement('a'); a.href = `/api/files/${id}/download`; a.click(); }
+    else if (n) canPreview(n) ? openPreview(n) : doDownload([id]);
     return;
   }
 
@@ -1085,6 +1300,10 @@ document.addEventListener('click', async (e) => {
 
   const sh = t.closest('[data-share]'); if (sh) return doShare(sh.dataset.share);
   const dn = t.closest('[data-down]');  if (dn) return doDownload([dn.dataset.down]);
+  const ey = t.closest('[data-eye]');   if (ey) {
+    const n = state.nodes.find(x => x.id === ey.dataset.eye);
+    return n ? openPreview(n) : undefined;
+  }
   const dl = t.closest('[data-del]');   if (dl) return doDelete([dl.dataset.del]);
   const ed = t.closest('[data-edit]');  if (ed) { state.selected.clear(); state.selected.add(ed.dataset.edit); return doRename(); }
 
@@ -1092,6 +1311,7 @@ document.addEventListener('click', async (e) => {
   if (act) {
     const a = act.dataset.act, ids = [...state.selected];
     if (a === 'download') doDownload(ids);
+    else if (a === 'preview') doPreviewSelection(ids);
     else if (a === 'move') doMove();
     else if (a === 'share') { ids.length === 1 ? doShare(ids[0]) : toast('请选择一项'); }
     else if (a === 'rename') doRename();
@@ -1171,6 +1391,60 @@ document.addEventListener('keydown', e => {
   }
 });
 
+/* ---------------- 登录会话有效期 ---------------- */
+/**
+ * 登录会话默认 7 天后过期，过期需重新验证密码。
+ * 这里做两件事：
+ * 1) 在「退出登录」按钮上显示剩余时间，避免用户被踢出时毫无预期
+ * 2) 剩余不足 1 天时弹一次提醒
+ * 真正的强制跳转由后端 401 触发（见 api() 与下方 expireSession），不靠前端计时。
+ */
+let _sessionTimer = null;
+
+function fmtLeft(sec) {
+  if (sec <= 0) return '已过期';
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (d > 0) return `${d} 天 ${h} 小时`;
+  if (h > 0) return `${h} 小时 ${m} 分`;
+  return `${m} 分钟`;
+}
+
+function startSessionCountdown(expiresIn) {
+  clearInterval(_sessionTimer);
+  const btn = $('#btnLogout');
+  if (typeof expiresIn !== 'number') return;
+
+  let left = expiresIn;
+  let warned = false;
+
+  const tick = () => {
+    if (btn) {
+      btn.title = `登录会话将在 ${fmtLeft(left)} 后过期，届时需重新登录`;
+      const span = btn.querySelector('span');
+      if (span) span.textContent = `退出登录 · ${fmtLeft(left)}`;
+    }
+    // 不足 1 天时提醒一次，够用但别反复打扰
+    if (!warned && left > 0 && left < 86400) {
+      warned = true;
+      toast(`登录会话将在 ${fmtLeft(left)} 后过期，请注意保存工作`);
+    }
+    left -= 60;
+    if (left <= 0) expireSession();
+  };
+
+  tick();
+  _sessionTimer = setInterval(tick, 60000);
+}
+
+/** 会话到期：清本地令牌并回登录页 */
+function expireSession() {
+  clearInterval(_sessionTimer);
+  localStorage.removeItem('cr_token');
+  location.replace('/login?expired=1');
+}
+
 /* ---------------- 启动 ---------------- */
 (async function init() {
   $$('.seg').forEach(s => s.classList.toggle('active', s.dataset.view === state.view));
@@ -1189,6 +1463,9 @@ document.addEventListener('keydown', e => {
     // 启用了认证才显示「退出登录」
     const lo = $('#btnLogout');
     if (lo) lo.hidden = !(auth && auth.enabled);
+
+    // 登录会话 7 天后过期。提前告知剩余时间，到点由后端 401 触发重新登录。
+    if (auth && auth.enabled) startSessionCountdown(auth.expires_in);
 
     await loadSettings();
     await load(null);
